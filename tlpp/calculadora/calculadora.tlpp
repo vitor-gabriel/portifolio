@@ -1,0 +1,131 @@
+#INCLUDE 'TOTVS.CH'
+#INCLUDE 'RWMAKE.CH'
+#INCLUDE 'FONT.CH'
+#INCLUDE 'COLORS.CH'
+
+//Defines do Programa
+#DEFINE APAGAR "CE"
+#DEFINE SOMA "+"
+#DEFINE SUBSTRAI "-"
+#DEFINE MULTIPLICA "*"
+#DEFINE DIVIDE "/"
+#DEFINE IGUAL "="
+#DEFINE ZERO "0"
+#DEFINE UM "1"
+#DEFINE DOIS "2"
+#DEFINE TRES "3"
+#DEFINE QUATRO "4"
+#DEFINE CINCO "5"
+#DEFINE SEIS "6"
+#DEFINE SETE "7"
+#DEFINE OITO "8"
+#DEFINE NOVE "9"
+
+//Variaveis staticas
+Static cValorGet         := ""
+Static cValorAntOperador := ""
+Static cOperador         := ""
+
+/*/{Protheus.doc} u_CalculadoraTlpp
+calculadora do protheus em tl++
+@type function
+@version 12.1.33
+@author Vitor
+@since 21/08/2022
+@return variant, sem retorno
+/*/
+Function u_CalculadoraTlpp()
+
+	SetPrvt("oFont1","oDlg1","oSay1","oGet1","oBtn1","oBtn2","oBtn3","oBtn4","oBtn5","oBtn6","oBtn7","oBtn8")
+	SetPrvt("oBtn10","oBtn11","oBtn12","oBtn13","oBtn14","oBtn15")
+
+	oFont1     := TFont():New( "Calibri",0,-19,,.F.,0,,400,.T.,.F.,,,,,, )
+	oDlg1      := MSDialog():New( 092,236,400,595,"Calculadora",,,.F.,,,,,,.T.,,,.T. )
+	oSay1      := TSay():New( 004,100,{||"Calculadora TLPP"},oDlg1,,oFont1,.F.,.F.,.F.,.T.,CLR_BLACK,CLR_WHITE,076,012)
+	oGet1      := TGet():New( 016,004,{|u| If(PCount()>0,cValorGet:=u,cValorGet)},oDlg1,172,022,,,CLR_BLACK,CLR_WHITE,oFont1,,,.T.,"",,,.F.,.F.,,.T.,.F.,"","",,)
+    oBtn1      := TButton():New( 128,136,APAGAR,oDlg1,{ || fLimpaGet() },040,024,,,,.T.,,"",,,,.F. )
+	oBtn2      := TButton():New( 100,136,DIVIDE,oDlg1,{ || fDivide() },040,024,,,,.T.,,"",,,,.F. )
+	oBtn3      := TButton():New( 072,136,MULTIPLICA,oDlg1,{ || fMultiplica() },040,024,,,,.T.,,"",,,,.F. )
+	oBtn4      := TButton():New( 044,136,SUBSTRAI,oDlg1,{ || fSubtrai() },040,024,,,,.T.,,"",,,,.F. )
+	oBtn5      := TButton():New( 044,092,SOMA,oDlg1,{ || fSoma() },040,024,,,,.T.,,"",,,,.F. )
+	oBtn6      := TButton():New( 044,004,IGUAL,oDlg1,{ || fIgual() },040,024,,,,.T.,,"",,,,.F. )
+    oBtn6      := TButton():New( 044,048,ZERO,oDlg1,{ || fAtualizaLabel(ZERO) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn7      := TButton():New( 072,004,UM,oDlg1,{ || fAtualizaLabel(UM) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn8      := TButton():New( 072,048,DOIS,oDlg1,{ || fAtualizaLabel(DOIS) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn9      := TButton():New( 072,092,TRES,oDlg1,{ || fAtualizaLabel(TRES) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn10     := TButton():New( 100,004,QUATRO,oDlg1,{ || fAtualizaLabel(QUATRO) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn11     := TButton():New( 100,048,CINCO,oDlg1,{ || fAtualizaLabel(CINCO) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn12     := TButton():New( 100,092,SEIS,oDlg1,{ || fAtualizaLabel(SEIS) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn13     := TButton():New( 128,004,SETE,oDlg1,{ || fAtualizaLabel(SETE) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn14     := TButton():New( 128,048,OITO,oDlg1,{ || fAtualizaLabel(OITO) },040,024,,,,.T.,,"",,,,.F. )
+	oBtn15     := TButton():New( 128,092,NOVE,oDlg1,{ || fAtualizaLabel(NOVE) },040,024,,,,.T.,,"",,,,.F. )
+
+	oDlg1:Activate(,,,.T.)
+
+Return
+
+Static Function fAtualizaLabel(xValor)
+	cValorGet += xValor
+	oGet1:Refresh()
+Return
+
+Static Function fLimpaGet(xValor)
+    cOperador := ""
+	cValorAntOperador := ""
+	cValorGet := ""
+	oGet1:Refresh()
+Return
+
+Static Function fDivide()
+	If Empty(cOperador) .And. !Empty(cValorGet)
+		cOperador := "/"
+		cValorAntOperador := cValorGet
+		cValorGet := ""
+		oGet1:Refresh()
+	EndIf
+Return
+
+Static Function fMultiplica()
+	If Empty(cOperador) .And. !Empty(cValorGet)
+		cOperador := "*"
+		cValorAntOperador := cValorGet
+		cValorGet := ""
+		oGet1:Refresh()
+	EndIf
+Return
+
+Static Function fSoma()
+	If Empty(cOperador) .And. !Empty(cValorGet)
+		cOperador := "+"
+		cValorAntOperador := cValorGet
+		cValorGet := ""
+		oGet1:Refresh()
+	EndIf
+Return
+
+Static Function fSubtrai()
+	If Empty(cOperador) .And. !Empty(cValorGet)
+		cOperador := "-"
+		cValorAntOperador := cValorGet
+		cValorGet := ""
+		oGet1:Refresh()
+	EndIf
+Return
+
+Static Function fIgual()
+	If !Empty(cOperador) .And. !Empty(cValorAntOperador)
+		Do Case
+		Case cOperador == "/"
+			cValorGet := cValtoChar(Val(cValorAntOperador) / Val(cValorGet))
+		Case cOperador == "*"
+			cValorGet := cValtoChar(Val(cValorAntOperador) * Val(cValorGet))
+		Case cOperador == "-"
+			cValorGet := cValtoChar(Val(cValorAntOperador) - Val(cValorGet))
+		Case cOperador == "+"
+			cValorGet := cValtoChar(Val(cValorAntOperador) + Val(cValorGet))
+		Endcase
+		cOperador := ""
+		cValorAntOperador := ""
+		oGet1:Refresh()
+	EndIf
+Return
