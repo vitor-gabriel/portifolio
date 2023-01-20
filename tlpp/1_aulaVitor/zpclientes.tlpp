@@ -1,0 +1,99 @@
+#INCLUDE "TOTVS.CH"
+#INCLUDE "TLPP-CORE.TH"
+#INCLUDE "TLPP-REST.TH"
+
+//POST com campos chunbados
+
+@POST('/pclientes')
+User Function Postclientes()
+	Local lRet              := .T.
+	Local aDados            := {}
+	Local jJson             := Nil
+	Local cJson             := oRest:getBodyRequest() //Self:GetContent()
+	Local cError            := ''
+	Local nLinha            := 0
+	Local cDirLog           := '\x_logs\'
+	Local cArqLog           := ''
+	Local cErrorLog         := ''
+	Local aLogAuto          := {}
+	Local nCampo            := 0
+	Local jResponse         := JsonObject():New()
+	Local cAliasWS          := 'SA1'
+	Private lMsErroAuto     := .F.
+	Private lMsHelpAuto     := .T.
+	Private lAutoErrNoFile  := .T.
+
+	//Se não existir a pasta de logs, cria
+	IF ! ExistDir(cDirLog)
+		MakeDir(cDirLog)
+	EndIF
+
+	//Definindo o conteúdo como JSON, e pegando o content e dando um parse para ver se a estrutura está ok
+	oRest:setKeyHeaderResponse('Content-Type','application/json')
+	jJson  := JsonObject():New()
+	cError := jJson:FromJson(cJson)
+
+	//Se tiver algum erro no Parse, encerra a execução
+	IF ! Empty(cError)
+		//SetRestFault(500, 'Falha ao obter JSON') //caso queira usar esse comando, você não poderá usar outros retornos, como os abaixo
+		oRest:setStatusCode(500)
+		jResponse['errorId']  := 'NEW004'
+		jResponse['error']    := 'Parse do JSON'
+		jResponse['solution'] := 'Erro ao fazer o Parse do JSON'
+	Else
+		DbSelectArea(cAliasWS)
+
+		//Adiciona os dados do ExecAuto
+		aadd(aDados, {'A1_COD'   , jJson:GetJsonObject( 'codigo' )    , Nil})
+		aadd(aDados, {'A1_LOJA'  , jJson:GetJsonObject( 'loja' )      , Nil})
+		aadd(aDados, {'A1_NOME'  , jJson:GetJsonObject( 'nome' )      , Nil})
+		aadd(aDados, {'A1_END'   , jJson:GetJsonObject( 'endereco' )  , Nil})
+		aadd(aDados, {'A1_NREDUZ', jJson:GetJsonObject( 'N fantasia' ), Nil})
+		aadd(aDados, {'A1_TIPO'  , jJson:GetJsonObject( 'tipo' )      , Nil})
+		aadd(aDados, {'A1_EST'   , jJson:GetJsonObject( 'estado' )    , Nil})
+		aadd(aDados, {'A1_MUN'   , jJson:GetJsonObject( 'municipio' ) , Nil})
+
+		//Percorre os dados do execauto
+		For nCampo := 1 To Len(aDados)
+			//Se o campo for data, retira os hifens e faz a conversão
+			If GetSX3Cache(aDados[nCampo][1], 'X3_TIPO') == 'D'
+				aDados[nCampo][2] := StrTran(aDados[nCampo][2], '-', '')
+				aDados[nCampo][2] := sToD(aDados[nCampo][2])
+			EndIf
+		Next
+
+		//Chama a inclusão automática
+		MsExecAuto({|x, y| MATA030(x, y)}, aDados, 3)
+
+		//Se houve erro, gera um arquivo de log dentro do diretório da protheus data
+		If lMsErroAuto
+			//Monta o texto do Error Log que será salvo
+			cErrorLog   := ''
+			aLogAuto    := GetAutoGrLog()
+			For nLinha := 1 To Len(aLogAuto)
+				cErrorLog += aLogAuto[nLinha] + CRLF
+			Next nLinha
+
+			//Grava o arquivo de log
+			cArqLog := 'pclientes_' + dToS(Date()) + '_' + StrTran(Time(), ':', '-') + '.log'
+			MemoWrite(cDirLog + cArqLog, cErrorLog)
+
+			//Define o retorno para o WebService
+			//SetRestFault(500, cErrorLog) //caso queira usar esse comando, você não poderá usar outros retornos, como os abaixo
+			oRest:setStatusCode(500)
+			jResponse['errorId']  := 'NEW005'
+			jResponse['error']    := 'Erro na inclusão do registro'
+			jResponse['solution'] := 'Nao foi possivel incluir o registro, foi gerado um arquivo de log em ' + cDirLog + cArqLog + ' '
+			lRet := .F.
+
+			//Senão, define o retorno
+		Else
+			jResponse['Registro']     := 'Cliente '+jJson:GetJsonObject( 'codigo' )+' - '+jJson:GetJsonObject( 'nome' )+' incluido com sucesso'
+		EndIf
+
+	EndIf
+
+	//Define o retorno
+	oRest:setResponse(jResponse)
+Return lRet
+
