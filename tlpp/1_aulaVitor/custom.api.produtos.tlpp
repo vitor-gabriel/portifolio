@@ -2,9 +2,6 @@
 #INCLUDE "TLPP-REST.TH"
 
 NAMESPACE custom.api
-//http://192.168.199.37:8081/rest/api/v2/custom/produtos
-//http://localhost:8081/rest/api/v2/custom/produtos
-//http://127.0.0.1:8081/rest/api/v2/custom/produtos
 
 @GET('api/v2/custom/produtos')
 USER FUNCTION GetProdutos()

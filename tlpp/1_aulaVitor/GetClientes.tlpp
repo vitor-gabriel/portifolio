@@ -4,9 +4,6 @@
 
 NameSpace custom.api
 
-//http://localhost:8080/rest/zclientes					--> Retorna todos os clientes
-//http://localhost:8080/rest/zclientes?a1_cod=000001	--> Retorna cliente especifico
-
 @GET('/GetClientes')
 User Function GetClientes()
 	Local jResponse := JsonObject():New()
