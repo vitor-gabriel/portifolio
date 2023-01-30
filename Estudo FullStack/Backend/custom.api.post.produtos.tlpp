@@ -1,0 +1,105 @@
+#INCLUDE "TLPP-CORE.TH"
+#INCLUDE "TLPP-REST.TH"
+#INCLUDE "FWMVCDEF.CH"
+
+NameSpace custom.api.products
+
+/*/{Protheus.doc} PostProducts
+Função para inserir produtos via API
+@type function
+@version 12.1.33
+@author Vitor
+@since 30/01/2023
+/*/
+@POST('api/v2/custom/products')
+User Function PostProducts()
+	Local jRequest      := JsonObject():New()
+	Local jResponse     := JsonObject():New()
+	Local cError        := formDataToJson(oRest:getBodyRequest(), @jRequest) //Requisicao do Frontend
+	Local oModel        := Nil
+	Private lMsErroAuto := .F.
+
+	If !Empty(cError)
+		oRest:setStatusCode(400) //Requisicao mau feito
+		jResponse["status"]  := "Error"
+		jResponse["message"] := cError
+		oRest:setKeyHeaderResponse("Content-Type","application/json")
+		oRest:setResponse(jResponse:ToJson())
+		oRest:getHeaderRequest()
+		Return
+	EndIf
+
+	oModel := FWLoadModel("MATA010")
+	oModel:SetOperation(MODEL_OPERATION_INSERT)
+	oModel:Activate()
+
+	oModel:SetValue("SB1MASTER",     "B1_COD", lastCodeProduct())
+	oModel:SetValue("SB1MASTER",    "B1_DESC", jRequest['description'])
+	oModel:SetValue("SB1MASTER",    "B1_TIPO", jRequest['type'])
+	oModel:SetValue("SB1MASTER",      "B1_UM", jRequest['unit'])
+	oModel:SetValue("SB1MASTER",  "B1_LOCPAD", jRequest['stock'])
+	oModel:SetValue("SB1MASTER", "B1_LOCALIZ", jRequest['addressing'])
+
+	If oModel:VldData()
+		oModel:CommitData()
+		oRest:setStatusCode(200) // Requisicao ok
+		jResponse['Status'] := "Success" //Propriedade do jResponse
+		jResponse["message"] := "Produto inserido com sucesso: Cód. " + AllTrim(SB1->B1_COD)
+		oRest:setKeyHeaderResponse("Content-Type","application/json")
+		oRest:setResponse(jResponse:ToJson())
+	Else
+		oRest:setStatusCode(400) //Requisicao mau feito
+		jResponse["status"]  := "Error"
+		jResponse["message"] := "Erro ao inserir produto: " + AllTrim(oModel:GetErrorMessage()[6])
+		oRest:setKeyHeaderResponse("Content-Type","application/json")
+		oRest:setResponse(jResponse:ToJson())
+		VarInfo("",oModel:GetErrorMessage())
+	EndIf
+
+	oModel:DeActivate()
+	oModel:Destroy()
+	oModel := NIL
+
+Return
+
+/*/{Protheus.doc} formDataToJson
+Função para converter o corpo da requisição em json
+@type function
+@version 12.1.33
+@author Vitor
+@since 30/01/2023
+@param cFormData, character, string com os dados da requisição
+@param jRequest, json, json com os dados da requisição
+@return json, jRequest
+/*/
+Static Function formDataToJson(cFormData, jRequest)
+	Local aData    := StrTokArr2(cFormData,"&")
+	Local nI       := 0
+	Local aItem    := {}
+	Local cError   := ""
+
+	For nI := 1 To Len(aData)
+		aItem := StrTokArr2(aData[nI],"=")
+		jRequest[aItem[1]] := StrTran(StrTran(aItem[2],"%20",Space(1)),"+",Space(1))
+	Next
+
+	If ValType(jRequest) != "J"
+		cError := "Requisição inválida: " + cFormData
+	EndIf
+
+Return cError
+
+/*/{Protheus.doc} lastCodeProduct
+Função para retornar o último código de produto
+@type function
+@version 12.1.33
+@author Vitor
+@since 30/01/2023
+@return character, cLastCode
+/*/
+Static Function lastCodeProduct()
+	Local cLastCode := ""
+
+	cLastCode := Soma1(AllTrim(Fm_Sql("SELECT MAX(B1_COD) FROM SB1990 WHERE D_E_L_E_T_ <> '*'")))
+
+Return cLastCode
