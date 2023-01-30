@@ -1,0 +1,92 @@
+#INCLUDE "TLPP-CORE.TH"
+#INCLUDE "TLPP-REST.TH"
+
+NameSpace inclui.campos.dinamico.clientes.api
+@POST('/api/v2/custom/post/campos/dinamico/clientes')
+/*/{Protheus.doc} postcliente
+	Api post para insert de dados no cadastro de clientes
+	Modelo json que deve ser passado, pois são campos obrigatório do Protheus:
+	{
+ 	"A1_COD":"API035",
+    "A1_LOJA":"01",
+    "A1_NOME":"TESTE NUMERO 35 ",
+    "A1_END":"RUA TESTE 35 ",
+    "A1_NREDUZ":"API 35",
+    "A1_TIPO":"R",
+    "A1_EST":"MT",
+    "A1_MUN":"DOS TESTES 35",
+	}
+
+	O usuário também pode incluir novos valores no json, porém deve utilizar
+	o nome do campo que está no protheus.
+	no exemplo abaixo incluo os campos A1_PESSOA, A1_CGC e o A1_PRICOM
+
+	{
+    "A1_COD":"API036",
+    "A1_LOJA":"01",
+    "A1_NOME":"TESTE NUMERO 36 ",
+    "A1_END":"RUA TESTE 36 ",
+    "A1_NREDUZ":"API 36",
+    "A1_TIPO":"R",
+    "A1_EST":"MT",
+    "A1_MUN":"DOS TESTES 36",
+    "A1_PESSOA":"F",
+    "A1_CGC":"03135906051",
+    "A1_PRICOM":"18/01/2023"
+	}
+
+	Nesse modelo que foi desenvolvido os campos do tipo data devem ser passado no corpo
+	do json no modelo brasileiro dia/mês/ano  porem como string "18/01/2023".
+	tem a opção de ser feito também da forma no padrão americano  ano mês e dia "20230118",
+	porem deve mudar o fonte: no lugar de CTOD() para SToD()
+
+@type function
+@version 12.1.33
+@author Gustavo Krebs
+@since 17/01/2023
+@return variant, não possuí return
+/*/
+User Function postcliente()
+	Local jRequest			:= JsonObject():New()					as object  	// Inicio meu Json request
+	Local jResponse 		:= JsonObject():New()					as object  	// Inicio meu Json request
+	Local aBody				:= {}					                as array
+	Local oModel 			:= FwLoadModel("CRMA980") 				as object  	// Retorno o objeto do model em MVC do cadastro de cliente
+	Local aGterror  		:= {} 									as array
+	Local nEx				as numeric
+	// Populo o JsonObjec através das informações contidas cBody --> getBodyRequest: Responsável por retornar o body da requisição HTTP
+	jRequest:FromJSON(oRest:getBodyRequest())
+	// Array que recebera os nomes dos componentes Json
+	aBody		:= jRequest:GetNames()
+	// O método define a operação que será realizada. no caso operação de Insert
+	oModel:SetOperation(3)
+	// Ativo o modelo
+	oModel:Activate()
+	For nEx := 1 To Len(aBody)
+		If GetSX3Cache(aBody[nEx], 'X3_TIPO') <> 'D'
+			// Seto o campo SetValue("com o mvalor que está contido na possição do array") , Seto o valor jRequest['com o mvalor que está contido no array ']
+			oModel:GetModel('SA1MASTER'):SetValue(aBody[nEx], jRequest[aBody[nEx]])
+		Else
+			// Tratativa para inserir dados no campo do tipo data (Utilizado (CTOD) --> Converte de caracter("18/01/2022") para data (18/01/22))
+			oModel:GetModel('SA1MASTER'):SetValue(aBody[nEx], CTOD(jRequest[aBody[nEx]]))
+		Endif
+	Next
+	// Se o dados foram validados faz-se a gravação efetiva dos dados
+	If oModel:VldData()
+		lOk := oModel:CommitData() 												// Grava os dados do objeto modelo.
+		oRest:setStatusCode(200)												// Seto o status code de success
+		jResponse['status'] 	:= ' success '									// Atribução do Status de success
+		jResponse['message']	:= 'Cliente cadastrado com sucesso '			// Atribução do da mensagen
+		// Se os dados passado no json não for validos faço a tratativa de erro
+	Else
+		aGterror := oModel:GetErrorMessage()									// Fornece uma estrutrura com a pilha de erro, a possição 6 --> aGterror[6] ExpC: mensagem do erro
+		oRest:setStatusCode(400)												// Seto o status code 400 de error
+		jResponse['status'] 	:= " error"										// Atribução do Status de error
+		jResponse['message']	:=  aGterror[6]									// Utilizo a 6° possisão do array pois que é a mensagem de erro
+	EndIf
+	oRest:setKeyHeaderResponse('Connection','Keep-Alive')						// Define o Keep-Alive
+	oRest:setKeyHeaderResponse('Content-Encoding','gzip, deflate')				// Define o gzip
+	oRest:setKeyHeaderResponse('Content-Type','application/json')				// Define o Content-Type
+	oRest:setResponse(jResponse:tojson())										// Restosta do retorno tanto success quanto error
+	oModel:DeActivate() 														// Retorna o erro no responsee
+	oModel:Destroy()															// Destroy o objeto e suas referencias a outros objetos.
+Return
