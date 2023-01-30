@@ -1,0 +1,67 @@
+#INCLUDE "TLPP-CORE.TH"
+#INCLUDE "TLPP-REST.TH"
+
+NameSpace custom.api.products
+
+/*/{Protheus.doc} GetProdutos
+Função para retornar produtos via API
+@type function
+@version 12.1.33
+@author Vitor
+@since 30/01/2023
+/*/
+@GET('api/v2/custom/products')
+USER FUNCTION GetProdutos()
+	Local jResponse   := JsonObject():New()
+	Local jQuery      := oRest:GetQueryRequest() //Requisicao do Frontend
+	Local cQuery      := ""
+	Local cFinalQuery := ""
+	Local cAlias      := ""
+	Local aDados      := {}
+
+	cQuery := "SELECT B1_COD,B1_DESC,B1_TIPO,B1_UM,B1_LOCPAD,B1_LOCALIZ FROM SB1990 WHERE D_E_L_E_T_ <> '*'"
+
+	//where opcional
+	If jQuery:HasProperty("b1_cod")
+		cQuery += " AND B1_COD IN (?)"
+	EndIf
+
+	oQuery := FWPreparedStatement():New()
+	oQuery:SetQuery(cQuery)
+
+	If jQuery:HasProperty("b1_cod")
+		oQuery:SetIn(1,StrToKarr2(jQuery['b1_cod'],","))
+	EndIf
+
+	cFinalQuery := oQuery:GetFixQuery()
+	cAlias      := MPSysOpenQuery(cFinalQuery) //Execucao do final begin sql
+
+	If (cAlias)->(!Eof())
+		oRest:setStatusCode(200) // Requisicao ok
+		jResponse['Status'] := "Success" //Propriedade do jResponse
+
+		While (cAlias)->(!Eof())
+			AADD(aDados, JsonObject():New())
+			aDados[Len(aDados)]["code"]  := AllTrim((cAlias)->B1_COD)
+			aDados[Len(aDados)]["description"] := AllTrim((cAlias)->B1_DESC)
+			aDados[Len(aDados)]["type"] := AllTrim((cAlias)->B1_TIPO)
+			aDados[Len(aDados)]["unit"] := AllTrim((cAlias)->B1_UM)
+			aDados[Len(aDados)]["stock"] := AllTrim((cAlias)->B1_LOCPAD)
+			aDados[Len(aDados)]["addressing"] := AllTrim((cAlias)->B1_LOCALIZ)
+			(cAlias)->(DbSkip())
+		EndDo
+		jResponse["produtos"] := aDados
+	Else
+		oRest:setStatusCode(400) //Requisicao mau feito
+		jResponse["status"]  := "Error"
+		jResponse["message"] := "Nenhum registro encontrado"
+	EndIf
+
+	oRest:setKeyHeaderResponse("Content-Type","application/json")
+	oRest:setResponse(jResponse)
+
+	oQuery:Destroy()
+	FwFreeObj(oQuery)
+Return
+
+
