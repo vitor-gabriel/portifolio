@@ -5,12 +5,11 @@ document.addEventListener("DOMContentLoaded", async e => {
     await getProducts().then(response => { products = response.produtos });
     //captura a tabela
     const table = document.getElementById('table-products');
+    const notFound = document.getElementById('not-found');
     table.innerHTML = '';
     //percorre o array de produtos
     if (typeof products === 'object') {
         table.innerHTML = `
-        <div class="container">
-        <table class="table table-striped table-hover" id="table-products">
             <thead>
                 <tr>
                     <th scope="col">Code</th>
@@ -21,11 +20,11 @@ document.addEventListener("DOMContentLoaded", async e => {
                     <th scope="col">Addressing</th>
                     <th scope="col">Buttons</th>
                 </tr>
-            </thead>
-            <tbody>'`;
+            </thead>`;
         // loop no array de produtos do backend
         products.forEach(product => {
             table.innerHTML += `
+            <tbody>
                 <tr>
                     <th scope="row">${product.code}</th>
                     <td>${product.description}</td>
@@ -38,18 +37,11 @@ document.addEventListener("DOMContentLoaded", async e => {
                         <a href="./delete.html?id=${product.id}" class="btn btn-danger">Delete</a>
                     </td>
                 </tr>
+            </tbody>
             `;
         });
-        table.innerHTML += `</tbody></table></div>`;
-    } else {
-        table.innerHTML += `
-            <div class="container text-center">
-                
-            </div>
-        </div>
-        `;
+        notFound.style.display = 'none';
     }
-    return
 
     //função para pegar os produtos
     async function getProducts() {
