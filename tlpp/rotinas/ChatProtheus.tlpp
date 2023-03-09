@@ -1,0 +1,178 @@
+
+#INCLUDE "totvs.ch"
+#INCLUDE "TLPP-CORE.TH"
+
+#DEFINE ROUTE_API "https://api.openai.com/v1"
+#DEFINE PATH_API "/chat/completions"
+#DEFINE API_KEY "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"
+#DEFINE MODEL "gpt-3.5-turbo"
+
+Static __nLinBox   := 01
+Static __nLinSay   := 08
+Static __lPar      := .F.
+Static __nPanel    := 0
+Static __oFontGPT  := TFont():New("Courier New", , -18, , .T.)
+
+User Function ChatProtheus()
+	Private aInfoChat := {}
+	Private aTamanho  := GetScreenRes()
+	Private nJanAltu  := aTamanho[2] - 20
+	Private nJanLarg  := aTamanho[1] - 20
+	Private oMainWnd
+	Private oPanel
+	Private oSay1
+	Private oScr1
+
+	oMainWnd := TWindow():New(10, 10, nJanLarg, nJanAltu, "ChatGPT in Protheus",,,,,,,,CLR_BLACK, CLR_WHITE,,,,,,, .T. )
+
+	oScr1 :=  TScrollBox():New(oMainWnd,01,01,500,950,.T.,.T.,.T.)
+
+	MontaScroll()
+	oMainWnd:Center(.T.)
+	oMainWnd:Activate("MAXIMIZED")
+
+return
+
+/*/{Protheus.doc} MontaScroll
+funcao para montar o scroll
+@type function
+@version 12.1.33
+@author Vitor
+@since 07/03/2023
+/*/
+Static Function MontaScroll()
+	Local cUserMessage := ""
+
+	oScr1:FreeChildren()
+	oPanel := TPanel():New(__nLinBox,01,"",oScr1,,.F.,,CLR_BLACK,CLR_WHITE,Int(nJanLarg*0.50),Int(nJanAltu*0.45))
+	oPanel:Cargo := __nPanel // gravei a "linha" do array, mas aqui pode ficar o código do produto
+	oPanel:bLClicked := { |oPanel| InputUser(oPanel,cUserMessage)}
+
+return
+
+/*/{Protheus.doc} DadosPnl
+Apresenta os dados para melhor leitura
+@type function
+@version 12.1.33
+@author Vitor
+@since 07/03/2023
+@param nElemento, numeric, objeto responsavel pela informação
+@param cMessage, character, mensagem do usuario ou da IA
+/*/
+Static Function DadosPnl( nElemento, cMessage )
+	FWAlertInfo("Clicou no painel " + alltrim( str( nElemento ) ) + CRLF + CRLF +;
+		'Sua '+Iif(mod(nElemento,2) == 0, 'resposta: ','pergunta: ') + cMessage + CRLF )
+return
+
+/*/{Protheus.doc} InputUser
+tela para capturar o input do usuario
+@type function
+@version 12.1.33
+@author Vitor
+@since 07/03/2023
+@param oPanel, object, painel principal
+@param cUserMessage, character, mensagem do usuario
+/*/
+Static Function InputUser(oPanel,cUserMessage)
+
+	oDlg1  := MSDialog():New( 092,232,325,796,"Digite sua duvida",,,.F.,,,,,oMainWnd,.T.,,,.T. )
+	oMGet1 := TMultiGet():New( 000,004,{| u | if( pCount() > 0, cUserMessage := u, cUserMessage ) },oDlg1,268,084,,,CLR_BLACK,CLR_WHITE,,.T.,"",,,.F.,.F.,.F.,,,.F.,,  )
+	oBtn1  := TButton():New( 092,008,"Executar",oDlg1,{|| GetInputUser(oDlg1,oPanel,cUserMessage) },129,012,,,,.T.,,"",,,,.F. )
+	oBtn2  := TButton():New( 092,141,"Cancelar",oDlg1,{|| oDlg1:End() },129,012,,,,.T.,,"",,,,.F. )
+
+	oDlg1:Activate(,,,.T.)
+
+Return
+
+/*/{Protheus.doc} GetInputUser
+Pega o input do usuario
+@type function
+@version 12.1.33
+@author Vitor
+@since 07/03/2023
+@param oDlg1, object, dialog principal
+@param oPanel, object, painel principal
+@param cUserMessage, character, mensagem do usuario
+/*/
+Static Function GetInputUser(oDlg1,oPanel,cUserMessage)
+	Local cRetornoIA  := ""
+	Local lOk         := .F.
+	Local nTamTextoIA := 0
+
+	//Panel para input do usuario
+	__lPar := mod(__nPanel++,2) == 0
+	oPanelUser := TPanel():New(__nLinBox,01,"",oPanel,,.F.,,CLR_BLACK,if(__lPar,CLR_GRAY,CLR_WHITE),Int(nJanLarg*0.55),50)
+	oPanelUser:Cargo := __nPanel // gravei a "linha" do array
+	oPanelUser:bLClicked := { |oPanelUser| DadosPnl(oPanelUser:Cargo,cUserMessage)}
+	oSay1 := TSay():New( 010, 012,{|| "User Input: "}, oPanelUser,,__oFontGPT,.F.,.F.,.F.,.T.,CLR_BLACK,CLR_WHITE,Int(nJanLarg*0.45),016 )
+	oSay2 := TSay():New( 020, 012,{|| cUserMessage}, oPanelUser,,__oFontGPT,.F.,.F.,.F.,.T.,CLR_BLACK,CLR_WHITE,Int(nJanLarg*0.45),016 )
+	__nLinBox += 050
+	oPanel:nBottom += 50
+	oPanel:Refresh()
+	oMainWnd:Refresh()
+	oDlg1:End()
+
+	If !Empty(cUserMessage)
+		FWMsgRun(, {|oSay| lOk := ExecutaAPI(cUserMessage,@cRetornoIA) } , "Aguarde" , "Consultando API" )
+	EndIf
+
+	//Panel para retorno do ChatGPT
+	nTamTextoIA := Int(Len(cRetornoIA) / 6) + 50
+	__lPar := mod(__nPanel++,2) == 0
+	oPanelIA := TPanel():New(__nLinBox,01,"",oPanel,,.F.,,CLR_BLACK,if(__lPar,CLR_GRAY,if(lOk,CLR_CYAN,CLR_HRED)),Int(nJanLarg*0.55),nTamTextoIA )
+	oPanelIA:Cargo := __nPanel // gravei a "linha" do array
+	oPanelIA:bLClicked := { |oPanelIA| DadosPnl(oPanelIA:Cargo,cRetornoIA)}
+	oSay1 := TSay():New( 010, 012,{|| "IA Return: " }, oPanelIA,,__oFontGPT,.F.,.F.,.F.,.T.,CLR_BLACK,if(lOk,CLR_CYAN,CLR_HRED),Int(nJanLarg*0.45),nTamTextoIA )
+	oSay2 := TSay():New( 020, 012,{|| cRetornoIA }, oPanelIA,,__oFontGPT,.F.,.F.,.F.,.T.,CLR_BLACK,if(lOk,CLR_CYAN,CLR_HRED),Int(nJanLarg*0.45),nTamTextoIA )
+	__nLinBox += nTamTextoIA
+	oPanel:nBottom += nTamTextoIA
+	oPanel:Refresh()
+	oMainWnd:Refresh()
+
+Return
+
+/*/{Protheus.doc} ExecutaAPI
+Função para executar a API do ChatGPT
+@type function
+@version 12.1.33
+@author Vitor
+@since 07/03/2023
+@param cUserMessage, character, pergunta do usuario
+@param cRetornoIA, character, retorno do ChatGPT
+@return logical, se true, IA conseguiu processar informação
+/*/
+Static Function ExecutaAPI(cUserMessage,cRetornoIA)
+	Local aHeaders  := {}
+	Local aMensagem := {}
+	Local cBuffer   := ""
+	Local jRequest  := JsonObject():New()
+	Local jResponse := JsonObject():New()
+	Local lOk       := .F.
+	Local oService
+
+	jRequest['model'] := MODEL
+	Aadd(aMensagem,JsonObject():New())
+	aMensagem[1]['role'] := "user"
+	aMensagem[1]['content']:= cUserMessage
+	jRequest['messages']   := aMensagem
+	jRequest['max_tokens'] := 1024
+	jRequest['temperature'] := 0.7
+
+	aAdd(aHeaders,"Content-Type: application/json")
+	aAdd(aHeaders,"Authorization: Bearer " + API_KEY)
+
+	oService := FwRest():New(ROUTE_API)
+	oService:SetPath(PATH_API)
+	oService:SetPostParams(FwNoAccent(jRequest:ToJson()))
+	If oService:Post(aHeaders)
+		jResponse:FromJson(oService:GetResult())
+		If !Empty(jResponse['choices'][1]['message']['content'])
+			cBuffer := DecodeUTF8(jResponse['choices'][1]['message']['content'])
+			cRetornoIA := AllTrim(SubStr(StrTran(cBuffer,Chr(10)+Chr(10),Chr(10)),2,Len(cBuffer)))
+			lOk := .T.
+		EndIf
+	Else
+		cRetornoIA := "Requisição processada com erro! Tente novamente mais tarde."
+	EndIf
+
+Return lOk
