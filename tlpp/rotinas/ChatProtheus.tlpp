@@ -4,7 +4,7 @@
 
 #DEFINE ROUTE_API "https://api.openai.com/v1"
 #DEFINE PATH_API "/chat/completions"
-#DEFINE API_KEY "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"
+#DEFINE API_KEY "YOUR API KEY"
 #DEFINE MODEL "gpt-3.5-turbo"
 
 Static __nLinBox   := 01
